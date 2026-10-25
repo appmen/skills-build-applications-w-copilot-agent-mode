@@ -30,20 +30,25 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 Record your plan here before editing code.
 
-- Presentation tier decision:
-- Logic tier decision:
-- Data tier decision:
-- Activity tracking approach:
-- Team management approach:
-- Leaderboard approach:
-- Workout suggestions approach:
+- Presentation tier decision: Replace the four `CapabilityCard` stubs with real views that fetch via the shared `getJson` client from `src/api/client.ts`. Each page owns its loading (`role="status"`), empty, and error (`role="alert"`) states and renders the API payload directly; no new state library.
+- Logic tier decision: Keep one Express route module per capability under `src/routes`, with thin handlers that delegate to small service functions. Validate input in the service layer and return deliberate 4xx responses (400 for malformed/missing fields, 404 for unknown references) so no cast error can surface as a 500.
+- Data tier decision: Enforce the contract on the Mongoose models with `required: true` on `User` (name, email, fitnessGoal), `Team` (name, mascot, members), `Activity` (type, user, team, minutes, points, occurredAt), and `Workout` (title, focus, minutes, difficulty). Keep `seed.ts` idempotent so repeated runs converge on the same representative dataset.
+- Activity tracking approach: `GET /api/activities` lists records; `POST /api/activities` validates that `userId` and `teamId` are well-formed ObjectIds referencing existing users and teams (400/404 otherwise), stores the submitted `user`, `team`, `type`, and `minutes`, and computes `points` (1 point per minute) and `occurredAt` (current time) server-side.
+- Team management approach: `GET /api/teams` lists teams with members; `POST /api/teams` requires a `name` (400 when missing) and keeps the submitted `name` and `mascot` on created and listed teams.
+- Leaderboard approach: `GET /api/leaderboard` aggregates activity points per team (Mongoose aggregation or in-memory sum over activities), orders by total points descending, and returns `{ teamName, totalPoints, rank }` with a 1-based rank.
+- Workout suggestions approach: `GET /api/workouts/suggestions/:userEmail` looks up the seeded user by email (404 when absent), then matches the user's `fitnessGoal` and recent activity types against the `Workout` catalog; the first suggestion's `focus` matches the goal or recent activity and every suggestion carries a `reason` explaining the match.
 
 ## Test plan
 
 Record the commands you run and what each failure means.
 
 - Data-tier command: `npm run test:data --prefix octofit-tracker/backend`
+  - Failure means a Mongoose model is missing required-field validation or the seed script is not idempotent/representative. Fix in `src/models` or `src/scripts/seed.ts` before touching other tiers.
 - API command: `npm run test:api --prefix octofit-tracker/backend`
+  - Failure means a route/service violates the API contract (wrong status code, missing field, or a 500 from an unvalidated cast). A beforeAll hook timeout on a fresh machine usually means `mongodb-memory-server` is still downloading the MongoDB binary; re-run once the download is cached.
 - Frontend command: `npm test --prefix octofit-tracker/frontend`
+  - Failure means a page still renders the "Implementation pending" stub or is missing a loading/empty/error state. Fix the page component; the fetch stub in the test defines the expected request URLs and payloads.
 - Backend build command: `npm run build --prefix octofit-tracker/backend`
+  - Failure means a TypeScript error in the backend; resolve before pushing.
 - Frontend build command: `npm run build --prefix octofit-tracker/frontend`
+  - Failure means a TypeScript error in the frontend; resolve before pushing.
