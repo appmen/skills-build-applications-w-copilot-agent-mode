@@ -1,6 +1,6 @@
 # Build and test a multi-tier application with GitHub Copilot
 
-<img src="https://octodex.github.com/images/Professortocat_v2.png" align="right" height="200px" />
+<img src="https://octodex.github.com/images/Professortocat_v2.png" align="right" height="201px" />
 
 Hey appmen!
 
